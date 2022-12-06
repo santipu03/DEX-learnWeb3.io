@@ -42,7 +42,25 @@ contract Exchange is ERC20 {
         return liquidityMinted;
     }
 
-    function removeLiquidity(uint256 _amount) public returns (uint, uint) {}
+    function removeLiquidity(uint _amount) public returns (uint, uint) {
+        require(_amount > 0, "_amount should be greater than zero");
+
+        uint ethReserve = address(this).balance;
+        uint256 tokenReserve = getReserve();
+        uint _totalSupply = totalSupply();
+
+        uint ethAmount = (_amount * ethReserve) / _totalSupply;
+        uint cryptoDevTokenAmount = (_amount * tokenReserve) / _totalSupply;
+
+        // Burn the sent LP tokens from the user's wallet to remove them from totalSupply()
+        _burn(msg.sender, _amount);
+        // Transfer the ethAmount to user
+        (bool sent, ) = payable(msg.sender).call{value: ethAmount}("");
+        require(sent, "Failed to send ETH");
+        // Transfer `cryptoDevTokenAmount` of Crypto Dev tokens to user
+        ERC20(cryptoDevTokenAddress).transfer(msg.sender, cryptoDevTokenAmount);
+        return (ethAmount, cryptoDevTokenAmount);
+    }
 
     function getReserve() public view returns (uint256) {
         return ERC20(cryptoDevTokenAddress).balanceOf(address(this));
