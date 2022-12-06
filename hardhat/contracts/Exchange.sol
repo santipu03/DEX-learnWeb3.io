@@ -6,8 +6,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract Exchange is ERC20 {
     address public cryptoDevTokenAddress;
 
-    constructor(address _CryptoDevToken) ERC20("Crypto Dev LP Token", "CDLP") {
-        require(_CryptoDevToken != address(0), "Token address is a null address");
+    constructor(address _CryptoDevToken) ERC20("CryptoDev LP Token", "CDLP") {
+        require(_CryptoDevToken != address(0), "Token address passed is a null address");
         cryptoDevTokenAddress = _CryptoDevToken;
     }
 
@@ -88,7 +88,37 @@ contract Exchange is ERC20 {
         return numerator / denominator;
     }
 
-    function getReserve() public view returns (uint256) {
+    /**
+     * @dev Swaps Eth for CryptoDev Tokens
+     */
+    function ethToCryptoDevToken(uint _minTokens) public payable {
+        uint256 tokenReserve = getReserve();
+        uint256 ethReserve = address(this).balance - msg.value;
+        uint256 tokensBought = getAmountOfTokens(msg.value, ethReserve, tokenReserve);
+        require(tokensBought >= _minTokens, "insufficient output amount");
+        // Transfer the `Crypto Dev` tokens to the user
+        ERC20(cryptoDevTokenAddress).transfer(msg.sender, tokensBought);
+    }
+
+    /**
+     * @dev Swaps CryptoDev Tokens for Eth
+     */
+    function cryptoDevTokenToEth(uint _tokensSold, uint _minEth) public {
+        uint256 tokenReserve = getReserve();
+        uint256 ethReserve = address(this).balance;
+        uint256 ethBought = getAmountOfTokens(_tokensSold, tokenReserve, ethReserve);
+        require(ethBought >= _minEth, "insufficient output amount");
+        // Transfer `Crypto Dev` tokens from the user's address to the contract
+        ERC20(cryptoDevTokenAddress).transferFrom(msg.sender, address(this), _tokensSold);
+        // send the `ethBought` to the user from the contract
+        (bool sent, ) = payable(msg.sender).call{value: ethBought}("");
+        require(sent, "Transfer ETH failed");
+    }
+
+    /**
+     * @dev Returns the amount of `Crypto Dev Tokens` held by the contract
+     */
+    function getReserve() public view returns (uint) {
         return ERC20(cryptoDevTokenAddress).balanceOf(address(this));
     }
 }
