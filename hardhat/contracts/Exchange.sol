@@ -11,6 +11,9 @@ contract Exchange is ERC20 {
         cryptoDevTokenAddress = _CryptoDevToken;
     }
 
+    /**
+     * @dev Adds liquidity to the exchange.
+     */
     function addLiquidity(uint _amount) public payable returns (uint) {
         uint liquidityMinted;
         uint ethBalance = address(this).balance;
@@ -42,6 +45,10 @@ contract Exchange is ERC20 {
         return liquidityMinted;
     }
 
+    /**
+     * @dev Returns the amount Eth/Crypto Dev tokens that would be returned to the user
+     * in the swap
+     */
     function removeLiquidity(uint _amount) public returns (uint, uint) {
         require(_amount > 0, "_amount should be greater than zero");
 
@@ -60,6 +67,25 @@ contract Exchange is ERC20 {
         // Transfer `cryptoDevTokenAmount` of Crypto Dev tokens to user
         ERC20(cryptoDevTokenAddress).transfer(msg.sender, cryptoDevTokenAmount);
         return (ethAmount, cryptoDevTokenAmount);
+    }
+
+    /**
+     * @dev Returns the amount Eth/Crypto Dev tokens that would be returned to the user
+     * in the swap
+     */
+    function getAmountOfTokens(
+        uint256 inputAmount,
+        uint256 inputReserve,
+        uint256 outputReserve
+    ) public pure returns (uint256) {
+        require(inputReserve > 0 && outputReserve > 0, "invalid reserves");
+        // We are charging a fee of `1%`
+        uint256 inputAmountWithFee = inputAmount * 99;
+        // The formula is Δy = (y * Δx) / (x + Δx)
+        // Δy in our case is `tokens to be received`
+        uint256 numerator = inputAmountWithFee * outputReserve;
+        uint256 denominator = (inputReserve * 100) + inputAmountWithFee;
+        return numerator / denominator;
     }
 
     function getReserve() public view returns (uint256) {
